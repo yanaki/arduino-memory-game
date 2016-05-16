@@ -1,31 +1,32 @@
 #include <Button.h>
+#include <Tone.h>
 
-Button button = Button(12,PULLUP);
+const int NLEDS = 4;
+const int LEDPINS[NLEDS] = {
+  4, 5, 6, 7
+};
+const int sAudioPin = 13;
 
-const int NLEDS = 4; 
-const Button LEDPINS[NLEDS] = {Button(12,PULLUP),Button(12,PULLUP),Button(12,PULLUP),Button(12,PULLUP)};
-  
-const int SWITCHPINS[NLEDS] = {
-  8,9,10,11};
 const int SEQDELAY = 200; // Millis between led flashes. Shorter is harder.
 const int PAUSEB4SEQ = 1000; // Millis before starting the sequence.
 const int MINLEVEL = 4;
 const int MAXLEVEL = 16;
 int gameLevel;
-int simonSez[MAXLEVEL]; // sequence of 0..NLEDS-1
+int memorySeq[MAXLEVEL]; // sequence of 0..NLEDS-1
+Button SWITCHPINS[NLEDS] = {
+  Button(8, PULLUP), Button(9, PULLUP), Button(10, PULLUP), Button(11, PULLUP)
+};
 
 void setup() {
-  // Analog in 0 should *not* be connected.
-  // It's mama's little PRNG :)
   randomSeed(analogRead(0));
-  gameLevel=MINLEVEL;
-  for (byte l=0; l<NLEDS; l++) {
+  gameLevel = MINLEVEL;
+  for (byte l = 0; l < NLEDS; l++) {
     pinMode(LEDPINS[l], OUTPUT);
   }
   //Serial.begin(9600);
-  // Visual feedback after reset. Also good as a cable check :)
+
   playLoseSequence();
-  playWinSequence(); 
+  playWinSequence();
 }
 
 void loop() {
@@ -33,16 +34,16 @@ void loop() {
   initSequence(gameLevel);
   done = 0;
   while (!done) {
-    getSwitchStroke();
+    readButton(); //Start
     delay(PAUSEB4SEQ);
     playSequence(gameLevel);
     if (playerGuess(gameLevel)) {
       playWinSequence();
       done = 1;
-      if (gameLevel<MAXLEVEL) {
+      if (gameLevel < MAXLEVEL) {
         gameLevel++;
       }
-    } 
+    }
     else {
       playLoseSequence();
     }
@@ -51,14 +52,14 @@ void loop() {
 
 void initSequence(int gameLevel) {
   // assertion: gameLevel<=MAXLEVEL
-  for (int i=0; i<gameLevel; i++) {
-    simonSez[i]=random(NLEDS);
+  for (int i = 0; i < gameLevel; i++) {
+    memorySeq[i] = random(NLEDS);
   }
 }
 
 void playSequence(int gameLevel) {
-  for (int i=0; i<gameLevel; i++) {
-    setLed(simonSez[i]); // Flash the LED in the sequence
+  for (int i = 0; i < gameLevel; i++) {
+    setLed(memorySeq[i]); // Flash the LED in the sequence
     delay(SEQDELAY);
     setLed(-1); // turn all LEDs off
     delay(SEQDELAY);
@@ -67,63 +68,73 @@ void playSequence(int gameLevel) {
 
 void setLed(int theLed) {
   // if not 0<=theLed<NLEDS (e.g. -1), turn all off
-  for (int l=0; l<NLEDS; l++) {
-    digitalWrite(LEDPINS[l],l==theLed);
+  for (int l = 0; l < NLEDS; l++) {
+    digitalWrite(LEDPINS[l], l == theLed);
   }
 }
 
 int playerGuess(int gameLevel) {
-  for (int i=0 ; i<gameLevel ; i++) {
-    int guess=getSwitchStroke();
-    // player feedback
-    digitalWrite(LEDPINS[guess],HIGH);
-    delay(250);
-    digitalWrite(LEDPINS[guess],LOW);
-    //Serial.print(guess,DEC);
-    //Serial.print(",");
-    //Serial.println(simonSez[i]);
-    if (guess!=simonSez[i]) {
+  for (int i = 0 ; i < gameLevel ; i++) {
+    int guess = readButton();
+
+    digitalWrite(LEDPINS[guess], HIGH);
+    delay(SEQDELAY);
+    digitalWrite(LEDPINS[guess], LOW);
+
+    if (guess != memorySeq[i]) {
       return 0;
     }
   }
   return 1;
 }
 
-int playWinSequence() {
-  for (int i=0; i<4*NLEDS; i++) {
-    setLed(i%NLEDS); // Flash the LED in the sequence
-    delay(50);
+int readButton() {
+  while (true) {
+    for (int i = 0; i < NLEDS; i++) {
+      if (SWITCHPINS[i].uniquePress()) {
+        return i;
+      }
+    }
   }
-  setLed(-1); // turn all LEDs off
+}
+
+
+int playWinSequence() {
+  int NOTE_SUSTAIN = 50;
+  for (uint8_t nLoop = 0; nLoop < 2; nLoop ++)
+  {
+    tone(sAudioPin, NOTE_A5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_B5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_C5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_B5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_C5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_D5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_C5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_D5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_E5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_D5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_E5);
+    delay(NOTE_SUSTAIN);
+    tone(sAudioPin, NOTE_E5);
+    delay(NOTE_SUSTAIN);
+  }
+  noTone(sAudioPin);
 }
 
 int playLoseSequence() {
-  for (int i=0; i<16; i++) {
-    for (int l=0; l<NLEDS; l++) {
-      digitalWrite(LEDPINS[l],i&1);
-    }
-    delay(50);
-  }
-  setLed(-1); // turn all LEDs off
-}
-
-int getSwitchStroke() {
-  while (get1stLowSwitch()>=0) {
-    // flush everything until no switch is pressed
-    delay(50);
-  }
-  while (get1stLowSwitch()<0) {
-    // wait for next press
-    delay(50);
-  }
-  return get1stLowSwitch();
-}
-
-int get1stLowSwitch() {
-  for (int i=0; i<NLEDS; i++) {
-    if (!digitalRead(SWITCHPINS[i])) {
-      return i;
-    }
-  }
-  return -1;
+  tone(sAudioPin, NOTE_G4);
+  delay(250);
+  tone(sAudioPin, NOTE_C4);
+  delay(500);
+  noTone(sAudioPin);
 }
