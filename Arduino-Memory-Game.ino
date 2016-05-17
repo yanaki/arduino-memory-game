@@ -7,12 +7,13 @@ const int LEDPINS[NLEDS] = {
 };
 const int sAudioPin = 13;
 
-const int SEQDELAY = 200; // Millis between led flashes. Shorter is harder.
-const int PAUSEB4SEQ = 1000; // Millis before starting the sequence.
+const int PAUSEB4SEQ = 500;
 const int MINLEVEL = 4;
-const int MAXLEVEL = 16;
+const int MAXLEVEL = 7;
 int gameLevel;
-int memorySeq[MAXLEVEL]; // sequence of 0..NLEDS-1
+int memorySeq[MAXLEVEL];
+int SEQDELAY = 500;
+
 Button SWITCHPINS[NLEDS] = {
   Button(8, PULLUP), Button(9, PULLUP), Button(10, PULLUP), Button(11, PULLUP)
 };
@@ -22,8 +23,9 @@ void setup() {
   gameLevel = MINLEVEL;
   for (byte l = 0; l < NLEDS; l++) {
     pinMode(LEDPINS[l], OUTPUT);
+    //    digitalWrite(LEDPINS[l], OUTPUT);
   }
-  //Serial.begin(9600);
+  Serial.begin(9600);
 
   playLoseSequence();
   playWinSequence();
@@ -58,9 +60,11 @@ void initSequence(int gameLevel) {
 }
 
 void playSequence(int gameLevel) {
+  Serial.println("====Begin=====");
   for (int i = 0; i < gameLevel; i++) {
     setLed(memorySeq[i]); // Flash the LED in the sequence
     delay(SEQDELAY);
+    Serial.println(memorySeq[i] + 1);
     setLed(-1); // turn all LEDs off
     delay(SEQDELAY);
   }
@@ -100,7 +104,8 @@ int readButton() {
 
 
 int playWinSequence() {
-  int NOTE_SUSTAIN = 50;
+  Serial.println("====RIGHT====");
+  int NOTE_SUSTAIN = 100;
   for (uint8_t nLoop = 0; nLoop < 2; nLoop ++)
   {
     tone(sAudioPin, NOTE_A5);
@@ -132,6 +137,7 @@ int playWinSequence() {
 }
 
 int playLoseSequence() {
+  Serial.println("====Error====");
   tone(sAudioPin, NOTE_G4);
   delay(250);
   tone(sAudioPin, NOTE_C4);
