@@ -1,5 +1,6 @@
 #include <Button.h>
 #include <Tone.h>
+#include <Potentiometer.h>
 
 const int NLEDS = 4;
 const int LEDPINS[NLEDS] = {
@@ -13,6 +14,7 @@ const int MAXLEVEL = 7;
 int gameLevel;
 int memorySeq[MAXLEVEL];
 int SEQDELAY = 500;
+Potentiometer potentiometer = Potentiometer(A1, 5);
 
 Button SWITCHPINS[NLEDS] = {
   Button(8, PULLUP), Button(9, PULLUP), Button(10, PULLUP), Button(11, PULLUP)
@@ -93,7 +95,13 @@ int playerGuess(int gameLevel) {
 }
 
 int readButton() {
-  while (true) {
+  int newDelay = SEQDELAY;
+  while (true) {  
+    newDelay = potentiometer.getSector()*200;
+    if(newDelay!=SEQDELAY) {
+      SEQDELAY = newDelay;
+      Serial.println("New Delay:" + String(newDelay));
+    }
     for (int i = 0; i < NLEDS; i++) {
       if (SWITCHPINS[i].uniquePress()) {
         return i;
